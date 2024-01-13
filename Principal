@@ -1,0 +1,285 @@
+#Importando a conexão com o bando de dados
+import mysql.connector
+#Importando algumas funções que criei para validações e para colocar cores no terminal
+from funcoes import validar_nome, validar_cpf, colocar_cor_vermelha, colocar_cor_verde, enviar_email, gerar_codigo, gerar_codigo_numerico
+from datetime import datetime, timedelta
+
+#Começando a conexão com o banco de dados
+conexao = mysql.connector.connect(
+    host = 'localhost',
+    user = 'root',
+    password = '',
+    database = 'biblioteca'
+)
+
+#Criando o cursor
+cursor = conexao.cursor()
+
+#Criando a class Pessoas
+class Pessoas:
+    def __init__(self, logado=False):
+        self.logado = logado 
+
+    def logar(self):
+        while True:
+            logar_com_cpf = str(input('CPF: '))
+            self.logar_com_cpf = logar_com_cpf
+            senha_logar = str(input('Senha: '))
+            consulta = f'SELECT cpf, senha FROM pessoas WHERE cpf = "{self.logar_com_cpf}"'
+            cursor.execute(consulta)
+            consulta = cursor.fetchone()
+            if consulta is not None:
+                cpf_banco, senha_banco = consulta
+                if senha_logar == senha_banco:
+                    colocar_cor_verde('Logado com Sucesso!')
+                    self.logado = True
+                    break
+                else:
+                    colocar_cor_vermelha('Cpf ou senha inválidos!')
+                    while True:
+                        mudar_senha = str(input('Deseja alterar a sua senha [S/N]? ')).upper()[0]
+                        if mudar_senha == 'S':
+                            self.alterar_senha()
+                            break
+                        elif mudar_senha == 'N':
+                            print()
+                            break
+                        else:
+                            colocar_cor_vermelha('Opção inválida!')
+
+            else:
+                print('Usuário não encontrado!')
+ 
+ 
+    def alterar_senha(self):
+        con_alterar_senha = 0
+        email_mudar_senha = str(input('Digite o seu email: '))
+        consulta = f'SELECT email FROM pessoas WHERE cpf = "{self.logar_com_cpf}"'
+        cursor.execute(consulta)
+        consulta = cursor.fetchone()
+
+        if consulta is not None:
+            codigo_gerado = gerar_codigo()
+            enviar_email(email_mudar_senha, 'Código para Mudança de Senha!', codigo_gerado)
+            colocar_cor_verde('Código enviado com sucesso!')
+
+            while True:
+                if con_alterar_senha == 0:
+                    digitar_codigo = str(input('Digite o código recebido por email: '))
+                    if digitar_codigo == codigo_gerado:
+                        while True:
+                            nova_senha = str(input('Nova Senha: '))
+                            if len(nova_senha) == 8:
+                                break
+                            else:
+                                colocar_cor_vermelha('A senha precisa conter 8 digitos')
+                        while True:
+                            confirmar_nova_senha = str(input('Confirme a Senha: '))
+                            if confirmar_nova_senha == nova_senha:
+                                    modificar = f'UPDATE pessoas SET senha = "{nova_senha}" WHERE email = "{email_mudar_senha}"'
+                                    cursor.execute(modificar)
+                                    conexao.commit()
+                                    colocar_cor_verde('Senha alterada com Sucesso!')
+                                    con_alterar_senha += 1
+                                    break
+                            else:
+                                colocar_cor_vermelha('As senhas não coincidem!')
+                    else:
+                        colocar_cor_vermelha('Código Inválido!')
+
+                else:
+                    break
+
+
+class Funcionarios(Pessoas):
+    def cadastrar_evento(self):
+        pass
+
+    def cadastrar_novo_livro(self):
+        pass
+
+
+class Alunos(Pessoas):
+    def cadastrar(self):
+        try:
+            while True:
+                nome = str(input('Nome: '))
+                self.nome = nome
+                if validar_nome(self.nome):
+                    break
+                else:
+                    colocar_cor_vermelha('Digite o nome corretamente!')
+
+            while True:
+                email = str(input('Seu melhor Email: '))
+                self.email = email
+                break
+
+            while True:
+                senha = str(input('Senha: '))
+                self.senha = senha
+                if len(senha) == 8:
+                    break
+                else:
+                    colocar_cor_vermelha('A senha precisa conter 8 digitos!')
+
+            while True:
+                confirmar_senha = str(input('Confirme a sua senha: '))
+                if confirmar_senha == self.senha:
+                    break
+                else:
+                    colocar_cor_vermelha('As senhas não coincidem!')
+
+            while True:
+                endereco = str(input('Endereço: '))
+                self.endereco = endereco
+                break
+
+            while True:
+                cpf = str(input('CPF: '))
+                self.cpf = cpf
+                if validar_cpf(self.cpf):
+                    break
+                else:
+                    colocar_cor_vermelha('CPF incorreto! OBS: Digite apenas os números!')
+            
+            #Script para inserir os dados na tabela
+            cadastro = f'INSERT INTO pessoas(nome, email, senha, endereco, cpf) VALUES("{self.nome}", "{self.email}", "{self.senha}", "{self.endereco}", "{self.cpf}")'
+
+            #Execução do script cadastro e modificação do banco
+            cursor.execute(cadastro)
+            conexao.commit()
+            colocar_cor_verde('Cadastrado com Sucesso!')
+
+            #encerrando conexão
+            cursor.close()
+            conexao.close()
+
+        except Exception as erro:
+            print(f'Erro: {erro}')
+
+
+    def fazer_reserva(self, reservou=False, codigo_recebido=0):
+        self.reservou = reservou
+        self.codigo_recebido = codigo_recebido
+        todos_livros = f'SELECT * FROM livros'
+        cursor.execute(todos_livros)
+        todos_livros = cursor.fetchall()
+        for c in todos_livros:
+            print('================')
+            print(f'Livro: {c[0]}')
+            print(f'Id livro: {c[1]}')
+            print(f'Disponível: {c[2]}')
+            print('================\n')
+
+        escolher_livro = str(input('Qual livro deseja retirar? '))
+        conferir_livro = f'SELECT nome_livro FROM livros'
+        cursor.execute(conferir_livro)
+        conferir_livro = cursor.fetchone()
+        if escolher_livro == conferir_livro:
+            if c[2] > 0:
+                print('Informações: Você tem até 1 dia para retirar o seu livro. Você receberá um email com um código que irá utilizar na hora da retirada do seu livro na unidade!')
+                consulta = f'SELECT email FROM pessoas WHERE cpf = "{self.logar_com_cpf}"'
+                cursor.execute(consulta)
+                consulta = cursor.fetchone()
+
+                self.codigo_recebido = gerar_codigo_numerico()
+                enviar_email(consulta, 'Código para retirada de livro', self.codigo_recebido)
+                colocar_cor_verde('Reserva realizada com Sucesso! Seu código para retirada na unidade foi enviada para o seu email!')
+                reservou = True
+            else:
+                colocar_cor_vermelha('Livro indisponível no momento!')
+        
+
+    def retirar(self):
+        if self.reservou == True:
+            confirmar_codigo = str(input('Digite aqui seu código de reserva: '))
+            if confirmar_codigo == self.codigo_recebido:
+                data_retirada = datetime.today()
+                data_devolucao = data_retirada + timedelta(30)
+                cadastrar_extrato = f'INSERT INTO extrato(data_retirada, data_devolucao, cpf_pessoas, id_livros) VALUES ("{data_retirada}", "{data_devolucao}", "{self.logar_com_cpf}", )'
+                
+    def devolver_livro(self):
+        pass
+
+        
+    def mostrar_status_retiradas_devolucoes(self):
+        pass
+
+    def mostrar_status_eventos(self):
+        pass
+
+
+
+while True:
+    print('[1] - Sou funcionário')
+    print('[2] - Sou aluno')
+    print('[3] - Sair')
+    quem_e = str(input('Escolha a opção: '))
+    if quem_e == '1':
+        funcionario = Funcionarios()
+        funcionario.logar()
+        if funcionario.logado == True:
+            menu_funcionario = '''
+                [1] - Cadastrar Evento
+                [2] - Cadastrar novo livro
+                '''
+            while True:
+                print(menu_funcionario)
+                escolha_funcionario = str(input('Escolha uma opção: '))
+                if escolha_funcionario == '1':
+                    funcionario.cadastrar_evento()
+                    break
+                elif escolha_funcionario == '2':
+                    funcionario.cadastrar_novo_livro()
+                    break
+                else:
+                    colocar_cor_vermelha('Opção Invalida')
+        else:
+            colocar_cor_vermelha('Realize o login!')
+    elif quem_e == '2':
+        aluno = Alunos()
+        aluno.logar()
+        if aluno.logado == True:
+            menu_aluno = '''
+                [1] - Cadastrar-se
+                [2] - Logar
+                [3] - Alterar Senha
+                [4] - Fazer reserva
+                [5] - Retirar Livro
+                [6] - Devolver Livro
+                [7] - Status
+                [8] - Inscrever-se em Eventos
+                [9] - vizualizar livros
+            '''
+            while True:
+                print(menu_aluno)
+                escolha_aluno = str(input('Escolha uma opção: '))
+                if escolha_aluno == '1':
+                    pass
+                elif escolha_aluno == '2':
+                    pass
+                elif escolha_aluno == '3':
+                    pass
+                elif escolha_aluno == '4':
+                    aluno.fazer_reserva()
+                    break
+                elif escolha_aluno == '5':
+                    aluno.retirar()
+                    break
+                elif escolha_aluno == '6':
+                    pass
+                elif escolha_aluno == '7':
+                    pass
+    elif quem_e == '3':
+        break
+    else:
+        colocar_cor_vermelha('Opção Inválida!')
+
+
+
+              
+
+   
+
+
