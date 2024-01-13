@@ -1,0 +1,84 @@
+import re
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+import random
+import string
+
+def validar_nome(s):
+    padrao = re.compile(r'^[a-zA-Z\sÀ-ú]+$')
+
+    if padrao.match(s):
+        return True
+    else:
+        return False
+
+
+def validar_cpf(s):
+    if s.isdigit():
+        return True
+    else:
+        return False
+
+
+def colocar_cor_vermelha(m):
+    print(f'\033[31m{m}\033[m')
+
+
+def colocar_cor_verde(m):
+    print(f'\033[32m{m}\033[m')
+
+
+def enviar_email(para, assunto, mensagem):
+        try:
+        # Configurar os detalhes do servidor SMTP
+            servidor_smtp = 'smtp.gmail.com'
+            porta_smtp = 587
+            usuario = 'email'
+            senha = 'senha'
+
+            # Configurar o e-mail
+            remetente = usuario
+            destinatario = para
+
+            # Criar mensagem
+            mensagem_email = MIMEMultipart()
+            mensagem_email['From'] = remetente
+            mensagem_email['To'] = destinatario
+            mensagem_email['Subject'] = assunto
+
+            # Corpo da mensagem
+            corpo_mensagem = mensagem
+            mensagem_email.attach(MIMEText(corpo_mensagem, 'plain'))
+
+            # Conectar ao servidor SMTP
+            servidor = smtplib.SMTP(servidor_smtp, porta_smtp)
+            servidor.starttls()
+
+            # Efetuar login
+            servidor.login(usuario, senha)
+
+            # Enviar e-mail
+            servidor.sendmail(remetente, destinatario, mensagem_email.as_string())
+
+            # Fechar a conexão
+            servidor.quit()
+        except Exception as erro:
+            print(f'Erro: {erro}')
+
+
+def gerar_codigo():
+    caracteres = string.ascii_letters + string.digits
+    codigo = ''.join(random.choice(caracteres) for _ in range(6))
+    return codigo
+
+
+def gerar_codigo_numerico():
+    return random.randint(1000, 9999)
+
+# Exemplo de uso
+print(gerar_codigo())
+
+
+
+
