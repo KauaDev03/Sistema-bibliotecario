@@ -76,8 +76,7 @@ def gerar_codigo():
 def gerar_codigo_numerico():
     return random.randint(1000, 9999)
 
-# Exemplo de uso
-print(gerar_codigo())
+
 
 
 
